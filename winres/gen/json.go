@@ -93,12 +93,24 @@ func main() {
 			internalName:     "go-music-dl-desktop",
 			originalFileName: "go-music-dl-desktop.exe",
 		},
-		{
-			outputFile:       "desktop_go.winres.json",
-			identityName:     "music-dl-desktop-go",
-			internalName:     "music-dl-desktop-go",
-			originalFileName: "music-dl-desktop-go.exe",
-		},
+			{
+				outputFile:       "desktop_go.winres.json",
+				identityName:     "music-dl-desktop-go",
+				internalName:     "music-dl-desktop-go",
+				originalFileName: "music-dl-desktop-go.exe",
+			},
+			{
+				outputFile:       "desktop_mygo.winres.json",
+				identityName:     "music-dl-desktop-mygo",
+				internalName:     "music-dl-desktop-mygo",
+				originalFileName: "music-dl-desktop-mygo.exe",
+			},
+			{
+				outputFile:       "desktop_mygo_native.winres.json",
+				identityName:     "music-dl-desktop-mygo-native",
+				internalName:     "music-dl-desktop-mygo-native",
+				originalFileName: "music-dl-desktop-mygo-native.exe",
+			},
 	}
 
 	for _, spec := range specs {

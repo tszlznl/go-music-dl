@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=music-dl-desktop-native
+Comment=Pure Go Native UI Desktop client for music-dl powered by MyGo UI
+Exec=music-dl-desktop-native
+Icon=music-dl-desktop-native
+Terminal=false
+Categories=AudioVideo;Audio;Player;
