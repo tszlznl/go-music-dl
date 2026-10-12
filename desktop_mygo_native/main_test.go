@@ -19,6 +19,27 @@ func TestAppIconPNG(t *testing.T) {
 	}
 }
 
+func TestLucideIconsLoaded(t *testing.T) {
+	icons := []*ui.SVG{
+		iconSearch, iconMusic, iconDownload, iconSettings,
+		iconPlay, iconPause, iconSquare, iconVolume,
+		iconVolumeMute, iconFolder, iconFolderOpen, iconTrash,
+		iconCopy, iconCheck, iconExternalLink, iconDisc,
+		iconBell, iconInfo, iconSparkles, iconRadio,
+		iconMinimize, iconMaximize, iconClose,
+	}
+
+	for i, ic := range icons {
+		if ic == nil {
+			t.Fatalf("第 %d 个 Lucide SVG 图标未正常加载解析", i)
+		}
+		w, h := ic.Size()
+		if w <= 0 || h <= 0 {
+			t.Fatalf("第 %d 个 Lucide SVG 图标尺寸异常: w=%v, h=%v", i, w, h)
+		}
+	}
+}
+
 func TestFormatDuration(t *testing.T) {
 	tests := []struct {
 		input    int
@@ -42,31 +63,34 @@ func TestFormatDuration(t *testing.T) {
 
 func TestNativeAppInitialView(t *testing.T) {
 	app := newNativeApp()
-	tester := ui.NewTester(app.view, 1180, 760)
+	tester := ui.NewTester(app.view, 1200, 780)
 
-	if !tester.HasText("Music DL") {
-		t.Error("未找到侧边栏标题 Music DL")
+	if !tester.HasText("Go Music DL") {
+		t.Error("未找到窗口顶栏标题 Go Music DL")
 	}
-	if !tester.HasText("Native UI 版") {
-		t.Error("未找到副标题 Native UI 版")
+	if !tester.HasText("GPU Native") {
+		t.Error("未找到顶栏标签 GPU Native")
 	}
 	if !tester.HasText("音乐搜索") {
-		t.Error("未找到音乐搜索标签")
+		t.Error("未找到音乐搜索导航项")
 	}
 	if !tester.HasText("下载管理") {
-		t.Error("未找到下载管理标签")
+		t.Error("未找到下载管理导航项")
 	}
 	if !tester.HasText("偏好设置") {
-		t.Error("未找到偏好设置标签")
+		t.Error("未找到偏好设置导航项")
 	}
 	if !tester.HasText("欢迎使用 Go Music DL 原生桌面端") {
 		t.Error("初始空搜索页面提示未显示")
+	}
+	if !tester.HasText("Pulse UI 引擎") {
+		t.Error("侧边栏底部 Pulse UI 引擎标识未显示")
 	}
 }
 
 func TestNativeAppTabNavigation(t *testing.T) {
 	app := newNativeApp()
-	tester := ui.NewTester(app.view, 1180, 760)
+	tester := ui.NewTester(app.view, 1200, 780)
 
 	// 初始状态为 search
 	if app.activeTab != "search" {
@@ -95,11 +119,11 @@ func TestNativeAppTabNavigation(t *testing.T) {
 	if app.activeTab != "settings" {
 		t.Fatalf("预期切换后 activeTab 为 settings，实际为 %s", app.activeTab)
 	}
-	if !tester.HasText("📥 下载设置") {
-		t.Error("切换到偏好设置后未显示'📥 下载设置'")
+	if !tester.HasText("下载设置") {
+		t.Error("切换到偏好设置后未显示'下载设置'")
 	}
-	if !tester.HasText("ℹ️ 系统信息与关于") {
-		t.Error("切换到偏好设置后未显示'ℹ️ 系统信息与关于'")
+	if !tester.HasText("系统信息与关于") {
+		t.Error("切换到偏好设置后未显示'系统信息与关于'")
 	}
 
 	// 切换回音乐搜索
@@ -139,7 +163,7 @@ func TestNativeAppSearchResultsAndPlayerView(t *testing.T) {
 	}
 
 	app.searchResults = mockSongs
-	tester := ui.NewTester(app.view, 1180, 760)
+	tester := ui.NewTester(app.view, 1200, 780)
 
 	if !tester.HasText("搜索到 2 首歌曲") {
 		t.Error("未找到搜索结果数量展示")
@@ -161,7 +185,7 @@ func TestNativeAppSearchResultsAndPlayerView(t *testing.T) {
 	app.currentSong = &mockSongs[0]
 	tester.Frame()
 
-	if !tester.HasText("▶ 播放") {
-		t.Error("未渲染播放器控制按钮 ▶ 播放")
+	if !tester.HasText("播放") {
+		t.Error("未渲染播放器控制按钮 播放")
 	}
 }

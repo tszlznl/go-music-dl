@@ -25,10 +25,10 @@ var appIconPNG []byte
 const (
 	appTitle      = "Go Music DL (Native UI)"
 	appWindowKey  = "music-dl-native-window"
-	defaultWidth  = 1180
-	defaultHeight = 760
-	minWidth      = 900
-	minHeight     = 600
+	defaultWidth  = 1200
+	defaultHeight = 780
+	minWidth      = 920
+	minHeight     = 620
 	githubRepoURL = "https://github.com/guohuiyuan/go-music-dl"
 )
 
@@ -110,9 +110,7 @@ func newNativeApp() *NativeApp {
 }
 
 func main() {
-	var (
-		flagVersion bool
-	)
+	var flagVersion bool
 	flag.BoolVar(&flagVersion, "v", false, "显示版本信息")
 	flag.BoolVar(&flagVersion, "version", false, "显示版本信息")
 	flag.Parse()
@@ -141,6 +139,7 @@ func main() {
 	})
 
 	mygo.App.WhenReady(func() {
+		// Frameless: true 消除 Windows 原生白底标题栏与边框，采用 Pulse 极简沉浸式自定义窗口设计
 		app.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:     appTitle,
 			Width:     defaultWidth,
@@ -148,6 +147,7 @@ func main() {
 			MinWidth:  minWidth,
 			MinHeight: minHeight,
 			StateKey:  appWindowKey,
+			Frameless: true,
 			Content:   ui.View(app.view),
 		})
 
@@ -229,11 +229,33 @@ func (a *NativeApp) setupAppMenu() {
 	mygo.App.SetMenu(mygo.NewMenu(items))
 }
 
+// view 应用主视图，参考 pulse.egoist.dev 的平静暗黑极简设计语言构建
 func (a *NativeApp) view(c *ui.Context) {
+	// 配置 Pulse 风格调色板：深黑冷色背景、卡片高对比度灰度分层与精细强调色
+	theme := ui.DarkTheme()
+	theme.Background = ui.Hex("#0b0d13")
+	theme.Surface = ui.Hex("#131620")
+	theme.SurfaceHover = ui.Hex("#1a1e2b")
+	theme.SurfacePressed = ui.Hex("#222839")
+	theme.Border = ui.Hex("#1e2332")
+	theme.Text = ui.Hex("#f1f5f9")
+	theme.TextMuted = ui.Hex("#8490a5")
+	theme.Accent = ui.Hex("#6366f1")
+	theme.AccentHover = ui.Hex("#4f46e5")
+	theme.AccentPressed = ui.Hex("#4338ca")
+	theme.AccentText = ui.Hex("#ffffff")
+	theme.Danger = ui.Hex("#ef4444")
+	theme.Success = ui.Hex("#10b981")
+	theme.Radius = 8
+	c.SetTheme(theme)
+
 	t := c.Theme()
 
 	ui.Column(c).Fill().Background(t.Background).Children(func() {
-		// 主工作区：左侧侧边栏 + 右侧主内容
+		// 1. Pulse 风格自定义窗口顶栏（拖拽区 + 品牌标识 + 窗口控制按钮）
+		a.customTitleBar(c)
+
+		// 2. 主工作区：左侧侧边栏 + 右侧主内容
 		ui.Row(c).Grow(1).AlignItems(ui.Stretch).Children(func() {
 			a.sidebar(c)
 			ui.Column(c).Grow(1).Padding(16, 20).Gap(14).Children(func() {
@@ -250,33 +272,94 @@ func (a *NativeApp) view(c *ui.Context) {
 			})
 		})
 
-		// 底部常驻播放器栏
+		// 3. 底部常驻播放器底栏
 		a.playerBar(c)
 	})
 }
 
-func (a *NativeApp) sidebar(c *ui.Context) {
+// customTitleBar Pulse 风格沉浸式无边框窗口顶栏
+func (a *NativeApp) customTitleBar(c *ui.Context) {
 	t := c.Theme()
 
-	ui.Column(c).Width(190).Padding(16, 12).Background(t.Surface).BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
-		// 标题
-		ui.Row(c).Padding(4, 8, 16).AlignItems(ui.Center).Gap(8).Children(func() {
-			ui.Text(c, "🎵").FontSize(20)
-			ui.Column(c).Children(func() {
-				ui.Text(c, "Music DL").FontSize(15).Bold()
-				ui.Text(c, "Native UI 版").FontSize(11).TextColor(t.TextMuted)
+	ui.Row(c).Height(40).DragWindow().AlignItems(ui.Center).Padding(0, 14).
+		Background(ui.Hex("#0e1118")).BorderWidth(0, 0, 1, 0).BorderColor(t.Border).Children(func() {
+		// 左侧品牌标识与应用名
+		ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+			ui.Row(c).Size(22, 22).Radius(5).Background(t.Accent).Center().Children(func() {
+				ui.Icon(c, iconMusic).Size(13, 13).TextColor(t.AccentText)
+			})
+			ui.Text(c, "Go Music DL").FontSize(13).Bold()
+			ui.Row(c).Padding(2, 6).Radius(4).Background(ui.Hex("#181c28")).Border(1, t.Border).Children(func() {
+				ui.Text(c, "GPU Native").FontSize(10).TextColor(t.TextMuted)
 			})
 		})
 
-		// 导航菜单项
+		ui.Spacer(c)
+
+		// 中间沉浸式当前页面指引
+		ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+			switch a.activeTab {
+			case "search":
+				ui.Icon(c, iconSearch).Size(12, 12).TextColor(t.TextMuted)
+				ui.Text(c, "全网音乐搜索").FontSize(11).TextColor(t.TextMuted)
+			case "downloads":
+				ui.Icon(c, iconDownload).Size(12, 12).TextColor(t.TextMuted)
+				ui.Text(c, "下载任务管理").FontSize(11).TextColor(t.TextMuted)
+			case "settings":
+				ui.Icon(c, iconSettings).Size(12, 12).TextColor(t.TextMuted)
+				ui.Text(c, "系统偏好设置").FontSize(11).TextColor(t.TextMuted)
+			}
+		})
+
+		ui.Spacer(c)
+
+		// 右侧无边框窗口控制按钮 (最小化、最大化/恢复、关闭)
+		ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+			// 最小化
+			btnMin := ui.Row(c.Key("win-min")).Size(28, 24).Radius(5).Center().Background(t.Surface)
+			if btnMin.Clicked() && a.win != nil {
+				a.win.Minimize()
+			}
+			btnMin.Children(func() {
+				ui.Icon(c, iconMinimize).Size(11, 11).TextColor(t.TextMuted)
+			})
+
+			// 最大化 / 还原
+			btnMax := ui.Row(c.Key("win-max")).Size(28, 24).Radius(5).Center().Background(t.Surface)
+			if btnMax.Clicked() && a.win != nil {
+				a.win.ToggleMaximize()
+			}
+			btnMax.Children(func() {
+				ui.Icon(c, iconMaximize).Size(10, 10).TextColor(t.TextMuted)
+			})
+
+			// 关闭窗口
+			btnClose := ui.Row(c.Key("win-close")).Size(28, 24).Radius(5).Center().Background(t.Surface)
+			if btnClose.Clicked() && a.win != nil {
+				a.win.Close()
+			}
+			btnClose.Children(func() {
+				ui.Icon(c, iconClose).Size(11, 11).TextColor(t.TextMuted)
+			})
+		})
+	})
+}
+
+// sidebar 极简侧边栏导航，采用 Lucide 矢量图标
+func (a *NativeApp) sidebar(c *ui.Context) {
+	t := c.Theme()
+
+	ui.Column(c).Width(200).Padding(16, 12).Background(ui.Hex("#0e1118")).
+		BorderWidth(0, 1, 0, 0).BorderColor(t.Border).Children(func() {
+		// 导航项定义
 		tabs := []struct {
 			id    string
-			icon  string
+			icon  *ui.SVG
 			label string
 		}{
-			{"search", "🔍", "音乐搜索"},
-			{"downloads", "📥", "下载管理"},
-			{"settings", "⚙️", "偏好设置"},
+			{"search", iconSearch, "音乐搜索"},
+			{"downloads", iconDownload, "下载管理"},
+			{"settings", iconSettings, "偏好设置"},
 		}
 
 		ui.Column(c).Gap(6).Grow(1).Children(func() {
@@ -284,11 +367,11 @@ func (a *NativeApp) sidebar(c *ui.Context) {
 				tabID := tab.id
 				isSelected := a.activeTab == tabID
 
-				btn := ui.Row(c.Key(tabID)).Padding(8, 12).Radius(8).Gap(10).AlignItems(ui.Center)
+				btn := ui.Row(c.Key("tab-"+tabID)).Padding(8, 12).Radius(8).Gap(10).AlignItems(ui.Center)
 				if isSelected {
 					btn.Background(t.Accent).TextColor(t.AccentText)
 				} else {
-					btn.Background(t.Surface)
+					btn.Background(ui.Hex("#131620"))
 				}
 
 				if btn.Clicked() {
@@ -296,7 +379,7 @@ func (a *NativeApp) sidebar(c *ui.Context) {
 				}
 
 				btn.Children(func() {
-					ui.Text(c, tab.icon).FontSize(14)
+					ui.Icon(c, tab.icon).Size(15, 15)
 					label := ui.Text(c, tab.label).FontSize(13)
 					if isSelected {
 						label.Bold()
@@ -309,24 +392,31 @@ func (a *NativeApp) sidebar(c *ui.Context) {
 			}
 		})
 
-		// 底部版本标识
-		ui.Row(c).Padding(8, 8, 0).AlignItems(ui.Center).Gap(6).Children(func() {
-			ui.Text(c, "版本: v"+core.AppVersion).FontSize(11).TextColor(t.TextMuted)
+		// 底部 Pulse 风格引擎就绪状态卡片
+		ui.Column(c).Padding(10, 12).Radius(8).Background(t.Surface).Border(1, t.Border).Gap(4).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
+				ui.Icon(c, iconSparkles).Size(12, 12).TextColor(t.Accent)
+				ui.Text(c, "Pulse UI 引擎").FontSize(11).Bold()
+			})
+			ui.Text(c, "GPU 硬件加速就绪").FontSize(10).TextColor(t.TextMuted)
+			ui.Text(c, "v"+core.AppVersion+" 纯 Go 无损端").FontSize(10).TextColor(t.TextMuted)
 		})
 	})
 }
 
+// searchPageView 音乐搜索主页面
 func (a *NativeApp) searchPageView(c *ui.Context) {
 	t := c.Theme()
 
 	// 顶部搜索控制栏
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+		// 搜索输入框
 		searchField := ui.SearchField(c, &a.searchKeyword).Placeholder("输入歌曲名、歌手名或关键词回车搜索...").Grow(1)
 		if searchField.Submitted() {
 			a.startSearch()
 		}
 
-		// 平台选择
+		// 音源平台下拉选择
 		displayOptions := make([]string, len(a.sourceOptions))
 		for i, s := range a.sourceOptions {
 			displayOptions[i] = sourceDisplayNames[s]
@@ -341,6 +431,7 @@ func (a *NativeApp) searchPageView(c *ui.Context) {
 			}
 		}
 
+		// 搜索按钮
 		btn := ui.PrimaryButton(c, "搜索").Disabled(a.searching || strings.TrimSpace(a.searchKeyword) == "")
 		if btn.Clicked() {
 			a.startSearch()
@@ -358,8 +449,9 @@ func (a *NativeApp) searchPageView(c *ui.Context) {
 
 	if a.searchError != "" {
 		ui.Column(c).Grow(1).Center().Gap(12).Children(func() {
-			ui.Text(c, "⚠️ 搜索遇到错误: "+a.searchError).TextColor(t.Danger).FontSize(14)
-			if ui.Button(c, "重试").Clicked() {
+			ui.Icon(c, iconClose).Size(24, 24).TextColor(t.Danger)
+			ui.Text(c, "搜索遇到错误: "+a.searchError).TextColor(t.Danger).FontSize(14)
+			if ui.Button(c, "重新搜索").Clicked() {
 				a.startSearch()
 			}
 		})
@@ -367,8 +459,10 @@ func (a *NativeApp) searchPageView(c *ui.Context) {
 	}
 
 	if len(a.searchResults) == 0 {
-		ui.Column(c).Grow(1).Center().Gap(12).Children(func() {
-			ui.Text(c, "🎵").FontSize(44)
+		ui.Column(c).Grow(1).Center().Gap(14).Children(func() {
+			ui.Row(c).Size(64, 64).Radius(16).Background(t.Surface).Border(1, t.Border).Center().Children(func() {
+				ui.Icon(c, iconMusic).Size(32, 32).TextColor(t.Accent)
+			})
 			ui.Text(c, "欢迎使用 Go Music DL 原生桌面端").FontSize(17).Bold()
 			ui.Text(c, "支持网易云、QQ音乐、酷狗、酷我、咪咕、B站等多平台搜索与无损下载").FontSize(13).TextColor(t.TextMuted)
 			ui.Text(c, "在上方输入歌名并点击“搜索”即可开始浏览试听").FontSize(12).TextColor(t.TextMuted)
@@ -378,6 +472,7 @@ func (a *NativeApp) searchPageView(c *ui.Context) {
 
 	// 结果统计栏
 	ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+		ui.Icon(c, iconRadio).Size(13, 13).TextColor(t.Accent)
 		ui.Text(c, fmt.Sprintf("搜索到 %d 首歌曲", len(a.searchResults))).FontSize(13).Bold()
 		ui.Spacer(c)
 		ui.Text(c, "平台: "+sourceDisplayNames[a.selectedSource]).FontSize(12).TextColor(t.TextMuted)
@@ -418,7 +513,10 @@ func (a *NativeApp) searchPageView(c *ui.Context) {
 					if song.Album != "" {
 						artistAlbum += " - " + song.Album
 					}
-					ui.Text(c, artistAlbum).FontSize(12).TextColor(t.TextMuted)
+					ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+						ui.Icon(c, iconDisc).Size(11, 11).TextColor(t.TextMuted)
+						ui.Text(c, artistAlbum).FontSize(12).TextColor(t.TextMuted)
+					})
 				})
 
 				// 时长与大小
@@ -450,8 +548,9 @@ func (a *NativeApp) searchPageView(c *ui.Context) {
 					c.Toast("已添加到下载列表: " + song.Name)
 				}
 
-				// 复制链接
-				if ui.Button(c.Key("copy-"+song.ID), "📋").Tooltip("复制歌曲详情链接").Clicked() {
+				// 复制链接按钮
+				btnCopy := ui.Button(c.Key("copy-"+song.ID), "📋").Tooltip("复制歌曲详情链接")
+				if btnCopy.Clicked() {
 					link := song.Link
 					if link == "" {
 						link = song.URL
@@ -464,19 +563,21 @@ func (a *NativeApp) searchPageView(c *ui.Context) {
 	})
 }
 
+// downloadsPageView 下载管理页面
 func (a *NativeApp) downloadsPageView(c *ui.Context) {
 	t := c.Theme()
 
 	// 顶部操作栏
 	ui.Row(c).AlignItems(ui.Center).Gap(10).Children(func() {
+		ui.Icon(c, iconFolder).Size(15, 15).TextColor(t.Accent)
 		ui.Text(c, "下载目录:").FontSize(13).Bold()
 		ui.Text(c, a.downloadDir).FontSize(12).TextColor(t.TextMuted).Grow(1)
 
-		if ui.Button(c, "📁 打开下载目录").Clicked() {
+		if ui.Button(c, "打开下载目录").Clicked() {
 			_ = mygo.Shell.OpenPath(a.downloadDir)
 		}
 
-		if ui.Button(c, "📂 更改目录").Clicked() {
+		if ui.Button(c, "更改目录").Clicked() {
 			paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
 				Parent:    a.win,
 				Title:     "选择下载保存目录",
@@ -489,7 +590,7 @@ func (a *NativeApp) downloadsPageView(c *ui.Context) {
 		}
 
 		if len(a.downloads) > 0 {
-			if ui.Button(c, "🗑️ 清空列表").Clicked() {
+			if ui.Button(c, "清空列表").Clicked() {
 				a.downloads = nil
 				c.Toast("已清空下载记录")
 			}
@@ -497,8 +598,10 @@ func (a *NativeApp) downloadsPageView(c *ui.Context) {
 	})
 
 	if len(a.downloads) == 0 {
-		ui.Column(c).Grow(1).Center().Gap(10).Children(func() {
-			ui.Text(c, "📥").FontSize(40)
+		ui.Column(c).Grow(1).Center().Gap(12).Children(func() {
+			ui.Row(c).Size(64, 64).Radius(16).Background(t.Surface).Border(1, t.Border).Center().Children(func() {
+				ui.Icon(c, iconDownload).Size(32, 32).TextColor(t.Accent)
+			})
 			ui.Text(c, "暂无下载任务").FontSize(15).Bold()
 			ui.Text(c, "在音乐搜索页面点击“下载”按钮，下载记录将在此显示。").FontSize(12).TextColor(t.TextMuted)
 		})
@@ -512,6 +615,10 @@ func (a *NativeApp) downloadsPageView(c *ui.Context) {
 				Padding(10, 14).Radius(8).Background(t.Surface).Border(1, t.Border).AlignItems(ui.Center).Gap(12)
 
 			row.Children(func() {
+				ui.Row(c).Size(32, 32).Radius(8).Background(ui.Hex("#181c28")).Center().Children(func() {
+					ui.Icon(c, iconMusic).Size(16, 16).TextColor(t.Accent)
+				})
+
 				ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
 					ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
 						ui.Text(c, dl.Song.Name).FontSize(14).Bold()
@@ -526,12 +633,18 @@ func (a *NativeApp) downloadsPageView(c *ui.Context) {
 					}
 				})
 
-				// 状态标签
+				// 状态标签与图标
 				switch dl.Status {
 				case "已完成":
-					ui.Text(c, "✓ 已完成").FontSize(12).TextColor(t.Success).Bold()
+					ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+						ui.Icon(c, iconCheck).Size(13, 13).TextColor(t.Success)
+						ui.Text(c, "已完成").FontSize(12).TextColor(t.Success).Bold()
+					})
 				case "下载失败":
-					ui.Text(c, "✕ 失败").FontSize(12).TextColor(t.Danger).Bold()
+					ui.Row(c).AlignItems(ui.Center).Gap(4).Children(func() {
+						ui.Icon(c, iconClose).Size(13, 13).TextColor(t.Danger)
+						ui.Text(c, "失败").FontSize(12).TextColor(t.Danger).Bold()
+					})
 				default:
 					ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 						ui.Spinner(c)
@@ -552,12 +665,13 @@ func (a *NativeApp) downloadsPageView(c *ui.Context) {
 	})
 }
 
+// settingsPageView 偏好设置页面
 func (a *NativeApp) settingsPageView(c *ui.Context) {
 	t := c.Theme()
 
 	ui.Scroll(c).Grow(1).Gap(16).Children(func() {
 		// 下载设置卡片
-		card(c, "📥 下载设置", func() {
+		cardWithIcon(c, iconDownload, "下载设置", func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
 				ui.Text(c, "保存路径:").Width(90).FontSize(13)
 				ui.Text(c, a.downloadDir).FontSize(12).TextColor(t.TextMuted).Grow(1)
@@ -582,7 +696,7 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 		})
 
 		// 桌面通知与系统交互
-		card(c, "🔔 桌面交互", func() {
+		cardWithIcon(c, iconBell, "桌面交互", func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
 				ui.Switch(c, &a.notifEnabled)
 				ui.Text(c, "下载完成触发系统桌面通知").FontSize(13)
@@ -590,12 +704,14 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 		})
 
 		// 关于与系统信息
-		card(c, "ℹ️ 系统信息与关于", func() {
+		cardWithIcon(c, iconInfo, "系统信息与关于", func() {
 			infoItems := []struct {
 				k, v string
 			}{
 				{"应用版本", "v" + core.AppVersion},
 				{"渲染架构", "MyGo UI (纯 Go 原生 GPU 渲染，无 Webview / 无 CGO)"},
+				{"界面风格", "Pulse 沉浸式极简无边框设计 (Frameless Window)"},
+				{"图标系统", "Lucide Icons 纯矢量渲染 (https://lucide.dev)"},
 				{"音频引擎", "MyGo Audio (Pure Go MP3/WAV 解码与系统输出)"},
 				{"音乐解析库", "github.com/guohuiyuan/music-lib"},
 				{"开源主页", githubRepoURL},
@@ -617,21 +733,29 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 	})
 }
 
+// playerBar 底部常驻播放器栏
 func (a *NativeApp) playerBar(c *ui.Context) {
 	t := c.Theme()
 
-	ui.Row(c).Height(64).Padding(8, 20).Background(t.Surface).BorderWidth(1, 0, 0, 0).BorderColor(t.Border).AlignItems(ui.Center).Gap(16).Children(func() {
+	ui.Row(c).Height(66).Padding(8, 20).Background(ui.Hex("#0e1118")).
+		BorderWidth(1, 0, 0, 0).BorderColor(t.Border).AlignItems(ui.Center).Gap(16).Children(func() {
 		// 当前歌曲信息
 		if a.currentSong != nil {
-			ui.Column(c).Width(240).Gap(3).Children(func() {
-				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, a.currentSong.Name).FontSize(13).Bold()
-					ui.Badge(c, sourceDisplayNames[a.currentSong.Source])
+			ui.Row(c).Width(250).AlignItems(ui.Center).Gap(10).Children(func() {
+				ui.Row(c).Size(38, 38).Radius(8).Background(ui.Hex("#1c202d")).Center().Children(func() {
+					ui.Icon(c, iconMusic).Size(18, 18).TextColor(t.Accent)
 				})
-				ui.Text(c, a.currentSong.Artist).FontSize(11).TextColor(t.TextMuted)
+				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+					ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, a.currentSong.Name).FontSize(13).Bold()
+						ui.Badge(c, sourceDisplayNames[a.currentSong.Source])
+					})
+					ui.Text(c, a.currentSong.Artist).FontSize(11).TextColor(t.TextMuted)
+				})
 			})
 		} else {
-			ui.Row(c).Width(240).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Width(250).AlignItems(ui.Center).Gap(8).Children(func() {
+				ui.Icon(c, iconDisc).Size(16, 16).TextColor(t.TextMuted)
 				ui.Text(c, "尚未播放歌曲").FontSize(12).TextColor(t.TextMuted)
 			})
 		}
@@ -643,19 +767,25 @@ func (a *NativeApp) playerBar(c *ui.Context) {
 				ui.Text(c, "正在解析音频流并加载...").FontSize(12).TextColor(t.TextMuted)
 			})
 		} else if a.audioError != "" {
-			ui.Text(c, "⚠️ "+a.audioError).FontSize(12).TextColor(t.Danger)
+			ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+				ui.Icon(c, iconClose).Size(13, 13).TextColor(t.Danger)
+				ui.Text(c, a.audioError).FontSize(12).TextColor(t.Danger)
+			})
 		}
 
 		ui.Spacer(c)
 
 		// 播放 / 暂停 控制按钮
 		if a.currentSong != nil && !a.loadingAudio {
-			playLabel := "▶ 播放"
+			playIcon := iconPlay
+			playLabel := "播放"
 			if a.playerPlaying {
-				playLabel = "⏸ 暂停"
+				playIcon = iconPause
+				playLabel = "暂停"
 			}
 
-			if ui.PrimaryButton(c, playLabel).Clicked() {
+			btnPlay := ui.PrimaryButton(c, playLabel)
+			if btnPlay.Clicked() {
 				if a.playerPlaying {
 					a.pauseAudio()
 				} else {
@@ -663,14 +793,21 @@ func (a *NativeApp) playerBar(c *ui.Context) {
 				}
 			}
 
-			if ui.Button(c, "⏹ 停止").Clicked() {
+			btnStop := ui.Button(c, "停止")
+			if btnStop.Clicked() {
 				a.stopAudio()
 			}
+			_ = playIcon
 		}
 
 		// 音量控制
 		ui.Row(c).AlignItems(ui.Center).Gap(6).Children(func() {
-			ui.Text(c, "🔊").FontSize(13)
+			volIcon := iconVolume
+			if a.volume <= 0.05 {
+				volIcon = iconVolumeMute
+			}
+			ui.Icon(c, volIcon).Size(15, 15).TextColor(t.TextMuted)
+
 			slider := ui.Slider(c, &a.volume, 0, 1).Width(90)
 			if slider.Changed() && a.player != nil {
 				a.player.SetVolume(a.volume)
@@ -887,11 +1024,16 @@ func (a *NativeApp) downloadSong(song model.Song) {
 	}()
 }
 
-func card(c *ui.Context, title string, body func()) ui.Element {
+func cardWithIcon(c *ui.Context, icon *ui.SVG, title string, body func()) ui.Element {
 	t := c.Theme()
-	return ui.Column(c).Padding(16).Gap(10).Radius(10).Background(t.Surface).Border(1, t.Border).Children(func() {
+	return ui.Column(c).Padding(16).Gap(12).Radius(10).Background(t.Surface).Border(1, t.Border).Children(func() {
 		if title != "" {
-			ui.Text(c, title).FontSize(14).Bold()
+			ui.Row(c).AlignItems(ui.Center).Gap(8).Children(func() {
+				if icon != nil {
+					ui.Icon(c, icon).Size(16, 16).TextColor(t.Accent)
+				}
+				ui.Text(c, title).FontSize(14).Bold()
+			})
 		}
 		body()
 	})
