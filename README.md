@@ -14,8 +14,11 @@ Go Music DL 是一个音乐搜索与下载工具，支持 **Web 界面**、**TUI
 
 最简单的使用方式，下载即用：
 
-1. 从 [Releases](https://github.com/guohuiyuan/go-music-dl/releases) 下载 `music-dl-desktop-rust.exe` 或 `music-dl-desktop-go.exe`
-2. 解压，双击运行
+1. 从 [Releases](https://github.com/guohuiyuan/go-music-dl/releases) 下载：
+   - **`music-dl-desktop-mygo-native.exe`（🌟 强烈推荐）**：基于 [egoist/mygo](https://github.com/egoist/mygo) 原生 GPU 渲染引擎构建。纯 Go 编写、零 CGO、零 Webview/Chromium 依赖，内存占用仅 20~40MB，启动毫秒级，真 60FPS 流畅动效，内置纯 Go MP3 音频流播放与一键扫码授权。
+   - `music-dl-desktop-rust.exe`：基于 Rust + Tao/Wry + Web 前端构建的桌面端。
+   - `music-dl-desktop-go.exe`：基于 Go + WebView2 构建的桌面端。
+2. 解压（如有压缩包），双击运行
 3. 享受原生桌面体验！
 
 移动端下载说明：在 [Releases](https://github.com/guohuiyuan/go-music-dl/releases) 页面可直接下载 Android `music-dl_arm64-v8a.apk`（推荐）/ `music-dl_x86_64.apk` / `music-dl.apk`（无分片兼容包）。Android APK 已内置 `ffmpeg` 与 `ffprobe`，本地音乐探测、非 MP3 元数据内嵌和视频渲染无需在手机上额外安装 FFmpeg。iOS 会提供 `music-dl-ios-unsigned.ipa` 给用户自行签名；如果发布环境配置了证书，也会额外提供已签名的 `music-dl-ios.ipa`。
@@ -558,7 +561,23 @@ taskkill /F /IM music-dl.exe
 
 **Q: 如何构建桌面应用？**
 
-构建 Rust 桌面应用
+**1. 构建纯 Go 原生 GPU 渲染桌面端 (desktop_mygo_native - 推荐)**
+
+```bash
+# Windows 本地开发启动
+run_mygo_native.bat
+
+# Windows 生产打包 (生成内嵌图标与高分屏清单的独立可执行程序)
+package_mygo_native.bat
+
+# Linux / macOS 本地开发启动
+./run_mygo_native.sh
+
+# Linux / macOS 生产打包
+./package_mygo_native.sh
+```
+
+**2. 构建 Rust 桌面应用**
 
 ```bash
 # 1. 构建 Go 二进制
@@ -567,20 +586,13 @@ go build -o desktop/music-dl.exe cmd/music-dl/main.go
 # 2. 构建 Rust 桌面应用
 cd desktop
 cargo build --release
-
 ```
 
-构建纯 Go 的桌面应用
+**3. 构建 Go + WebView2 桌面应用**
 
-```
-cd desktop
-
-# Windows 
-go build -ldflags="-H windowsgui"
-
-# Linux 
-go build
-
+```bash
+cd desktop_go
+go build -ldflags="-H windowsgui -w -s" -o ..\music-dl-desktop-go.exe
 ```
 
 **Q: 桌面应用支持哪些平台？**
@@ -619,6 +631,7 @@ go-music-dl/
 │       ├── collection.go  # 本地自制歌单接口 (GORM)
 │       ├── local_music.go # 本地音乐扫描、上传、封面/歌词与删除接口
 │       └── videogen.go    # 视频生成后端支持
+├── desktop_mygo_native/   # 🌟 纯 Go 原生 GPU 渲染桌面端 (egoist/mygo 声明式 UI, 零 CGO/零 Webview)
 ├── desktop/               # 桌面应用 (Rust + Tao/Wry)
 ├── desktop_go/            # 桌面应用 (Go + webview2 )
 ├── desktop_app/           # 移动应用 (Go + Gio )
@@ -635,6 +648,10 @@ go-music-dl/
 ├── Dockerfile             # Docker 构建配置
 ├── go.mod                 # Go 模块配置
 ├── README.md              # 主项目说明
+├── package_mygo_native.bat# 构建纯 Go 原生桌面程序脚本 (Windows)
+├── package_mygo_native.sh # 构建纯 Go 原生桌面程序脚本 (Linux/macOS)
+├── run_mygo_native.bat    # 原生桌面端启动脚本 (Windows)
+├── run_mygo_native.sh     # 原生桌面端启动脚本 (Linux/macOS)
 ├── package.bat            # 构建Rust桌面程序脚本
 ├── package_go.bat         # 构建Go桌面程序脚本
 ├── package_app.bat        # 构建Android移动应用脚本
@@ -646,6 +663,7 @@ go-music-dl/
 ## 技术栈
 
 * **核心库**: [music-lib](https://github.com/guohuiyuan/music-lib) - 音乐平台搜索下载
+* **原生 GPU 桌面引擎**: [egoist/mygo](https://github.com/egoist/mygo) (`ui` & `audio`) - 纯 Go 编写声明式 GPU 渲染框架与流式音频解码器
 * **CLI 框架**: [Cobra](https://github.com/spf13/cobra) - 命令行工具
 * **Web 框架**: [Gin](https://github.com/gin-gonic/gin) - Web 框架
 * **TUI 框架**: [Bubble Tea](https://github.com/charmbracelet/bubbletea) - 终端界面
@@ -654,13 +672,23 @@ go-music-dl/
 
 ### 桌面应用架构
 
-桌面应用采用前后端分离架构：
+项目提供多种桌面端架构以适应不同平台、性能与资源需求：
 
-* **前端**: Rust + Tao/Wry - 负责窗口管理、WebView 渲染和进程管理
-* **后端**: Go 二进制 - 嵌入到桌面应用中，提供 Web 服务和音乐功能
-* **通信**: HTTP 本地服务 - 前后端通过 `http://127.0.0.1:37777` 通信
+1. **纯 Go 原生 GPU 渲染架构 (`desktop_mygo_native` - 推荐)**：
+   - **渲染引擎**: [egoist/mygo/ui](https://github.com/egoist/mygo) - 纯 GPU 原生声明式布局与渲染，60FPS 流畅动效。
+   - **特性**: 零 CGO 编译依赖、零 Webview/Chromium 浏览器内核，内存占用极低（约 20~40MB），启动速度毫秒级。
+   - **音频架构**: 基于 `mygo/audio` 与 `mygo/audio/mp3` 内置纯 Go MP3 音频解码播放与系统扬声器输出。
+   - **交互系统**: Pulse 设计系统（支持深色/浅色双模主题自适应）、WinUI 3 / macOS 交通灯多平台窗口控制、Lucide 矢量图标系统、二维码扫码授权与本地歌单持久化。
+   - 详细说明请参考 [desktop_mygo_native/README.md](desktop_mygo_native/README.md)。
 
-详细说明请参考 [desktop/README.md](desktop/README.md)
+2. **Rust + Tao/Wry 混合架构 (`desktop`)**：
+   - **前端**: Rust + Tao/Wry - 负责窗口管理、WebView 渲染和进程管理。
+   - **后端**: Go 二进制 - 嵌入到桌面应用中，提供 Web 服务和音乐功能。
+   - **通信**: HTTP 本地服务 - 前后端通过 `http://127.0.0.1:37777` 通信。
+   - 详细说明请参考 [desktop/README.md](desktop/README.md)。
+
+3. **Go + WebView2 架构 (`desktop_go`)**：
+   - 适用于轻量级调用 Windows 系统内置 WebView2 运行 Web 界面。
 
 ## 贡献
 
