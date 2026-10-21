@@ -16,7 +16,6 @@ data/settings.db
 data/
 winres/winres.json
 winres/desktop_go.winres.json
-winres/desktop_mygo.winres.json
 winres/desktop_mygo_native.winres.json
 *.exe
 *.log

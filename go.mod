@@ -10,11 +10,13 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
+	github.com/egoist/mygo v0.4.7
 	github.com/gin-gonic/gin v1.11.0
 	github.com/gioui-plugins/gio-plugins v0.9.2
 	github.com/glebarez/sqlite v1.11.0
 	github.com/guohuiyuan/music-lib v1.1.1-0.20260916154859-28e1080ba416
 	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/crypto v0.55.0
 	gorm.io/gorm v1.31.1
@@ -36,7 +38,6 @@ require (
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.11.1 // indirect
-	github.com/egoist/mygo v0.4.7 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
@@ -72,7 +73,6 @@ require (
 	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
