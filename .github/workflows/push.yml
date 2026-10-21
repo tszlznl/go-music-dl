@@ -25,6 +25,10 @@ jobs:
           go mod tidy
           go generate ./...
 
+      - name: Run Tests
+        run: |
+          go test -v ./desktop_mygo_native/...
+
       - name: Run Lint
         uses: golangci/golangci-lint-action@v7
         with:

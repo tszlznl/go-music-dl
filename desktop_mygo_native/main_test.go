@@ -943,3 +943,37 @@ func TestDesktopSettingsPersistence(t *testing.T) {
 	app2.notifEnabled = true
 	app2.saveDesktopSettings()
 }
+
+func TestThemeTogglePersistenceViaUI(t *testing.T) {
+	app := newNativeApp()
+	app.themeMode = ThemeModeDark
+	app.saveDesktopSettings()
+
+	tester := ui.NewTester(app.view, 1240, 800)
+	tester.Frame()
+
+	// 切换到设置页并点击浅色模式
+	if err := tester.Click("设置"); err != nil {
+		t.Fatalf("点击设置导航项失败: %v", err)
+	}
+	tester.Frame()
+
+	if err := tester.Click("浅色模式 (Pulse Light)"); err != nil {
+		t.Fatalf("点击浅色模式切换失败: %v", err)
+	}
+	tester.Frame()
+
+	if app.themeMode != ThemeModeLight {
+		t.Fatalf("点击后预期切换为 Light，实际为 %v", app.themeMode)
+	}
+
+	// 重新加载应用实例，断言已通过 UI 点击自动落盘
+	appReloaded := newNativeApp()
+	if appReloaded.themeMode != ThemeModeLight {
+		t.Fatalf("UI 交互后预期自动落盘为 Light，但重新加载实例为 %v", appReloaded.themeMode)
+	}
+
+	// 恢复为 Dark 并落盘
+	app.themeMode = ThemeModeDark
+	app.saveDesktopSettings()
+}

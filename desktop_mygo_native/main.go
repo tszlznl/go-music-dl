@@ -284,9 +284,16 @@ func (a *NativeApp) saveDesktopSettings() {
 		FilenameTemplate:    a.filenameTemplate,
 	}
 	data, err := json.MarshalIndent(s, "", "  ")
-	if err == nil {
-		_ = os.MkdirAll("data", 0755)
-		_ = os.WriteFile(desktopSettingsPath(), data, 0644)
+	if err != nil {
+		log.Printf("[saveDesktopSettings] json marshal failed: %v", err)
+		return
+	}
+	if err := os.MkdirAll("data", 0755); err != nil {
+		log.Printf("[saveDesktopSettings] failed to create data directory: %v", err)
+		return
+	}
+	if err := os.WriteFile(desktopSettingsPath(), data, 0644); err != nil {
+		log.Printf("[saveDesktopSettings] failed to write desktop settings: %v", err)
 	}
 }
 
@@ -713,6 +720,7 @@ func (a *NativeApp) pulseSidebar(c *ui.Context) {
 				} else {
 					a.themeMode = ThemeModeDark
 				}
+				a.saveDesktopSettings()
 			}
 			btnTheme.Children(func() {
 				ui.Icon(c, themeIcon).Size(13, 13).TextColor(pal.TextMuted)
@@ -2163,6 +2171,7 @@ func (a *NativeApp) downloadsPageView(c *ui.Context) {
 			})
 			if err == nil && len(paths) > 0 && paths[0] != "" {
 				a.downloadDir = paths[0]
+				a.saveDesktopSettings()
 				c.Toast("下载位置已更新")
 			}
 		}
@@ -2294,6 +2303,7 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 
 						if item.Clicked() {
 							a.themeMode = opt.id
+							a.saveDesktopSettings()
 							c.Toast("已切换为" + opt.name)
 						}
 
@@ -2350,6 +2360,7 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 
 							if item.Clicked() {
 								a.fontFamily = f.family
+								a.saveDesktopSettings()
 								c.Toast("已切换界面字体: " + f.name)
 							}
 
@@ -2374,6 +2385,7 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 						customName := strings.TrimSpace(a.customFontInput)
 						if customName != "" {
 							a.fontFamily = customName
+							a.saveDesktopSettings()
 							c.Toast("已应用自定义字体: " + customName)
 						}
 					}
@@ -2426,6 +2438,7 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 
 						if item.Clicked() {
 							a.windowControlsStyle = opt.id
+							a.saveDesktopSettings()
 							c.Toast("已切换窗口控制风格: " + opt.name)
 						}
 
@@ -2453,6 +2466,7 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 					})
 					if err == nil && len(paths) > 0 && paths[0] != "" {
 						a.downloadDir = paths[0]
+						a.saveDesktopSettings()
 						c.Toast("下载位置已更新")
 					}
 				}
@@ -2460,7 +2474,9 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 
 			ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
 				ui.Text(c, "文件命名格式").Width(90).FontSize(13).TextColor(t.TextMuted)
-				ui.TextInput(c, &a.filenameTemplate).Width(280)
+				if ti := ui.TextInput(c, &a.filenameTemplate).Width(280); ti.Changed() {
+					a.saveDesktopSettings()
+				}
 				ui.Text(c, "变量：{artist} 歌手，{name} 歌名，{album} 专辑").FontSize(12).TextColor(pal.Faint)
 			})
 
@@ -2486,6 +2502,7 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 						}
 						if item.Clicked() {
 							a.downloadQuality = opt.id
+							a.saveDesktopSettings()
 							c.Toast("已设置下载音质偏好: " + opt.name)
 						}
 						item.Children(func() {
@@ -2703,8 +2720,11 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 						settings.WebDAVUsername = a.webdavUsername
 						settings.WebDAVPassword = a.webdavPassword
 						settings.WebDAVDir = a.webdavDir
-						_ = core.SaveWebSettings(settings)
-						c.Toast("已保存 WebDAV 配置")
+						if err := core.SaveWebSettings(settings); err != nil {
+							c.Toast("保存 WebDAV 失败: " + err.Error())
+						} else {
+							c.Toast("已保存 WebDAV 配置")
+						}
 					}
 				})
 			}
@@ -2713,7 +2733,9 @@ func (a *NativeApp) settingsPageView(c *ui.Context) {
 		// Pulse 分组卡片: 通知
 		pulseGroupCard(c, iconBell, ui.Hex("#ffc93d"), "通知", func() {
 			ui.Row(c).AlignItems(ui.Center).Gap(12).Children(func() {
-				ui.Switch(c, &a.notifEnabled)
+				if sw := ui.Switch(c, &a.notifEnabled); sw.Changed() {
+					a.saveDesktopSettings()
+				}
 				ui.Text(c, "下载完成时发送通知").FontSize(13).TextColor(t.Text)
 			})
 		})
@@ -2887,8 +2909,11 @@ func (a *NativeApp) pulsePlayerDock(c *ui.Context) {
 				ui.Icon(c, volIcon).Size(15, 15).TextColor(t.TextMuted)
 
 				slider := ui.Slider(c.Key("vol-slider"), &a.volume, 0, 1).Width(70)
-				if slider.Changed() && a.player != nil {
-					a.player.SetVolume(a.volume)
+				if slider.Changed() {
+					if a.player != nil {
+						a.player.SetVolume(a.volume)
+					}
+					a.saveDesktopSettings()
 				}
 				ui.Text(c, fmt.Sprintf("%d%%", int(a.volume*100))).FontSize(11).TextColor(t.TextMuted).Width(30)
 			})
@@ -3171,6 +3196,28 @@ func (a *NativeApp) refreshLocalMusic() {
 }
 
 func (a *NativeApp) playLocalFile(item LocalMusicItem) {
+	if strings.ToLower(item.Ext) != "mp3" {
+		a.mu.Lock()
+		a.currentSong = &model.Song{
+			ID:     item.Path,
+			Name:   strings.TrimSuffix(item.Filename, filepath.Ext(item.Filename)),
+			Artist: "本地音乐",
+			Source: "local",
+			Ext:    item.Ext,
+			Size:   item.Size,
+		}
+		a.audioError = fmt.Sprintf("暂不支持播放 .%s 格式（原生播放器当前仅内置纯 Go MP3 解码）", item.Ext)
+		a.loadingAudio = false
+		a.playerPlaying = false
+		a.mu.Unlock()
+		if a.win != nil {
+			a.win.Update(func() {
+				a.win.Invalidate()
+			})
+		}
+		return
+	}
+
 	a.mu.Lock()
 	a.playGen++
 	gen := a.playGen
@@ -3197,7 +3244,9 @@ func (a *NativeApp) playLocalFile(item LocalMusicItem) {
 	a.mu.Unlock()
 
 	if a.win != nil {
-		a.win.Invalidate()
+		a.win.Update(func() {
+			a.win.Invalidate()
+		})
 	}
 
 	go func(gen uint64) {
@@ -3289,7 +3338,7 @@ func (a *NativeApp) batchDownloadSongs(songs []model.Song) {
 
 func (a *NativeApp) performSearch(keyword, source string) ([]model.Song, error) {
 	if source == "all" {
-		sources := []string{"netease", "qq", "kugou", "kuwo", "migu", "bilibili"}
+		sources := []string{"netease", "qq", "kugou", "kuwo", "migu", "bilibili", "soda"}
 		var wg sync.WaitGroup
 		var mu sync.Mutex
 		var allSongs []model.Song
@@ -3476,6 +3525,18 @@ func (a *NativeApp) downloadSong(song model.Song) {
 	}
 	song.Extra["level"] = q
 	song.Extra["netease_level"] = q
+	song.Extra["quality"] = q
+	switch q {
+	case "lossless":
+		song.Extra["br"] = "999"
+		song.Extra["format"] = "flac"
+	case "exhigh":
+		song.Extra["br"] = "320"
+		song.Extra["format"] = "mp3"
+	case "standard":
+		song.Extra["br"] = "128"
+		song.Extra["format"] = "mp3"
+	}
 
 	item := DownloadItem{
 		Song:    song,
@@ -3488,7 +3549,9 @@ func (a *NativeApp) downloadSong(song model.Song) {
 	a.mu.Unlock()
 
 	if a.win != nil {
-		a.win.Invalidate()
+		a.win.Update(func() {
+			a.win.Invalidate()
+		})
 	}
 
 	go func() {
@@ -3525,7 +3588,9 @@ func (a *NativeApp) downloadSong(song model.Song) {
 			if core.WebDAVConfigured(settings) {
 				data, readErr := os.ReadFile(saved.SavedPath)
 				if readErr == nil {
-					_ = core.UploadSongToWebDAV(settings, filepath.Base(saved.SavedPath), data)
+					if upErr := core.UploadSongToWebDAV(settings, filepath.Base(saved.SavedPath), data); upErr != nil {
+						log.Printf("[WebDAV] failed to upload %s: %v", filepath.Base(saved.SavedPath), upErr)
+					}
 				}
 			}
 		}
@@ -3670,11 +3735,17 @@ func generateQRCodeBitmap(session *model.QRLoginSession) (*ui.Bitmap, error) {
 }
 
 func (a *NativeApp) updateQRModalError(msg string) {
-	a.mu.Lock()
-	a.qrModal.ErrorText = msg
-	a.mu.Unlock()
 	if a.win != nil {
-		a.win.Invalidate()
+		a.win.Update(func() {
+			a.mu.Lock()
+			a.qrModal.ErrorText = msg
+			a.mu.Unlock()
+			a.win.Invalidate()
+		})
+	} else {
+		a.mu.Lock()
+		a.qrModal.ErrorText = msg
+		a.mu.Unlock()
 	}
 }
 
@@ -3696,16 +3767,24 @@ func (a *NativeApp) startQRLogin(source string) {
 	a.mu.Unlock()
 
 	if a.win != nil {
-		a.win.Invalidate()
+		a.win.Update(func() {
+			a.win.Invalidate()
+		})
 	}
 
 	go func() {
 		defer func() {
-			a.mu.Lock()
-			a.qrLoginPolling[source] = false
-			a.mu.Unlock()
 			if a.win != nil {
-				a.win.Invalidate()
+				a.win.Update(func() {
+					a.mu.Lock()
+					a.qrLoginPolling[source] = false
+					a.mu.Unlock()
+					a.win.Invalidate()
+				})
+			} else {
+				a.mu.Lock()
+				a.qrLoginPolling[source] = false
+				a.mu.Unlock()
 			}
 		}()
 
@@ -3731,14 +3810,21 @@ func (a *NativeApp) startQRLogin(source string) {
 			appTip = "请使用 手机 QQ 扫描二维码"
 		}
 
-		a.mu.Lock()
-		a.qrModal.Bitmap = bmp
-		a.qrModal.StatusText = appTip
-		a.qrModal.Key = session.Key
-		a.mu.Unlock()
-
 		if a.win != nil {
-			a.win.Invalidate()
+			a.win.Update(func() {
+				a.mu.Lock()
+				a.qrModal.Bitmap = bmp
+				a.qrModal.StatusText = appTip
+				a.qrModal.Key = session.Key
+				a.mu.Unlock()
+				a.win.Invalidate()
+			})
+		} else {
+			a.mu.Lock()
+			a.qrModal.Bitmap = bmp
+			a.qrModal.StatusText = appTip
+			a.qrModal.Key = session.Key
+			a.mu.Unlock()
 		}
 
 		checkFn := core.GetQRLoginCheckFunc(source)
@@ -3768,34 +3854,58 @@ func (a *NativeApp) startQRLogin(source string) {
 
 			switch res.Status {
 			case model.QRLoginStatusScanned:
-				a.mu.Lock()
-				a.qrModal.StatusText = "已扫描，请在手机端点击确认授权…"
-				a.mu.Unlock()
 				if a.win != nil {
-					a.win.Invalidate()
+					a.win.Update(func() {
+						a.mu.Lock()
+						a.qrModal.StatusText = "已扫描，请在手机端点击确认授权…"
+						a.mu.Unlock()
+						a.win.Invalidate()
+					})
+				} else {
+					a.mu.Lock()
+					a.qrModal.StatusText = "已扫描，请在手机端点击确认授权…"
+					a.mu.Unlock()
 				}
 			case model.QRLoginStatusSuccess:
 				cookie := qrLoginCookieString(res)
 				if cookie != "" {
-					a.mu.Lock()
-					a.qrModal.Success = true
-					a.qrModal.StatusText = "✅ 授权成功，正在同步账号身份…"
-					switch source {
-					case "netease":
-						a.cookieNetease = cookie
-					case "qq":
-						a.cookieQQ = cookie
-					case "kugou":
-						a.cookieKugou = cookie
-					case "bilibili":
-						a.cookieBilibili = cookie
-					}
-					core.CM.SetAll(map[string]string{source: cookie})
-					core.CM.Save()
-					a.mu.Unlock()
-
 					if a.win != nil {
-						a.win.Invalidate()
+						a.win.Update(func() {
+							a.mu.Lock()
+							a.qrModal.Success = true
+							a.qrModal.StatusText = "✅ 授权成功，正在同步账号身份…"
+							switch source {
+							case "netease":
+								a.cookieNetease = cookie
+							case "qq":
+								a.cookieQQ = cookie
+							case "kugou":
+								a.cookieKugou = cookie
+							case "bilibili":
+								a.cookieBilibili = cookie
+							}
+							core.CM.SetAll(map[string]string{source: cookie})
+							core.CM.Save()
+							a.mu.Unlock()
+							a.win.Invalidate()
+						})
+					} else {
+						a.mu.Lock()
+						a.qrModal.Success = true
+						a.qrModal.StatusText = "✅ 授权成功，正在同步账号身份…"
+						switch source {
+						case "netease":
+							a.cookieNetease = cookie
+						case "qq":
+							a.cookieQQ = cookie
+						case "kugou":
+							a.cookieKugou = cookie
+						case "bilibili":
+							a.cookieBilibili = cookie
+						}
+						core.CM.SetAll(map[string]string{source: cookie})
+						core.CM.Save()
+						a.mu.Unlock()
 					}
 
 					// 立即异步验证获取真实昵称
@@ -3803,31 +3913,53 @@ func (a *NativeApp) startQRLogin(source string) {
 
 					// 稍作等待以展示验证出的昵称
 					time.Sleep(800 * time.Millisecond)
-					a.mu.Lock()
-					st := a.authStatus[source]
-					if st.Valid && st.Username != "" {
-						vipBadge := ""
-						if st.IsVIP {
-							vipBadge = " (VIP)"
-						}
-						a.qrModal.StatusText = fmt.Sprintf("✅ 欢迎，%s%s！登录成功", st.Username, vipBadge)
-					} else {
-						a.qrModal.StatusText = "✅ 授权成功，已自动保存！"
-					}
-					a.mu.Unlock()
-
 					if a.win != nil {
-						a.win.Invalidate()
+						a.win.Update(func() {
+							a.mu.Lock()
+							st := a.authStatus[source]
+							if st.Valid && st.Username != "" {
+								vipBadge := ""
+								if st.IsVIP {
+									vipBadge = " (VIP)"
+								}
+								a.qrModal.StatusText = fmt.Sprintf("✅ 欢迎，%s%s！登录成功", st.Username, vipBadge)
+							} else {
+								a.qrModal.StatusText = "✅ 授权成功，已自动保存！"
+							}
+							a.mu.Unlock()
+							a.win.Invalidate()
+						})
+					} else {
+						a.mu.Lock()
+						st := a.authStatus[source]
+						if st.Valid && st.Username != "" {
+							vipBadge := ""
+							if st.IsVIP {
+								vipBadge = " (VIP)"
+							}
+							a.qrModal.StatusText = fmt.Sprintf("✅ 欢迎，%s%s！登录成功", st.Username, vipBadge)
+						} else {
+							a.qrModal.StatusText = "✅ 授权成功，已自动保存！"
+						}
+						a.mu.Unlock()
 					}
 
 					time.Sleep(1500 * time.Millisecond)
-					a.mu.Lock()
-					if a.qrModal.Source == source {
-						a.qrModal.Active = false
-					}
-					a.mu.Unlock()
 					if a.win != nil {
-						a.win.Invalidate()
+						a.win.Update(func() {
+							a.mu.Lock()
+							if a.qrModal.Source == source {
+								a.qrModal.Active = false
+							}
+							a.mu.Unlock()
+							a.win.Invalidate()
+						})
+					} else {
+						a.mu.Lock()
+						if a.qrModal.Source == source {
+							a.qrModal.Active = false
+						}
+						a.mu.Unlock()
 					}
 					return
 				}
@@ -4135,7 +4267,9 @@ func (a *NativeApp) startPlaybackTicker() {
 			a.mu.Unlock()
 
 			if a.win != nil {
-				a.win.Invalidate()
+				a.win.Update(func() {
+					a.win.Invalidate()
+				})
 			}
 		} else {
 			a.mu.Unlock()
@@ -4279,8 +4413,16 @@ func (a *NativeApp) loadCustomPlaylists() {
 func (a *NativeApp) saveCustomPlaylists() {
 	p := filepath.Join(a.downloadDir, "collections.json")
 	data, err := json.MarshalIndent(a.customPlaylists, "", "  ")
-	if err == nil {
-		_ = os.WriteFile(p, data, 0644)
+	if err != nil {
+		log.Printf("[saveCustomPlaylists] json marshal failed: %v", err)
+		return
+	}
+	if err := os.MkdirAll(a.downloadDir, 0755); err != nil {
+		log.Printf("[saveCustomPlaylists] mkdir failed: %v", err)
+		return
+	}
+	if err := os.WriteFile(p, data, 0644); err != nil {
+		log.Printf("[saveCustomPlaylists] failed to write %s: %v", p, err)
 	}
 }
 
