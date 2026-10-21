@@ -13,7 +13,7 @@
    - **多平台窗口控制**：支持系统自适应、Windows (WinUI 3 贴边按钮)、macOS (红黄绿交通灯) 以及 Linux GNOME / KDE 风格无缝体验。
    - **矢量图标与字体系统**：集成 Lucide 精致矢量图标；支持精选字体（微软雅黑、Segoe UI、苹方、SF Pro 等）与本机字体实时字形预览。
 4. **内置纯 Go 音频解码播放**：
-   - 基于 `github.com/egoist/mygo/audio` 与 `github.com/egoist/mygo/audio/mp3`，实现纯 Go MP3 音频流式解码与系统扬声器输出，支持音量调节、暂停/恢复、可拖拽 Seek 进度条与循环播放。
+   - 基于 `github.com/egoist/mygo/audio` 与 `github.com/egoist/mygo/audio/mp3`，实现纯 Go MP3 与 WAV 音频流式解码与系统扬声器输出，支持音量调节、暂停/恢复、可拖拽 Seek 进度条与循环播放。
 5. **全网多平台音乐聚合搜索**：
    - 支持网易云音乐、QQ音乐、酷狗音乐、酷我音乐、咪咕音乐、Bilibili、汽水音乐等主流音源并发搜索，支持单曲、歌单、专辑与链接直达。
 6. **歌单与本地音乐管理**：

@@ -3196,7 +3196,8 @@ func (a *NativeApp) refreshLocalMusic() {
 }
 
 func (a *NativeApp) playLocalFile(item LocalMusicItem) {
-	if strings.ToLower(item.Ext) != "mp3" {
+	ext := strings.ToLower(item.Ext)
+	if ext != "mp3" && ext != "wav" {
 		a.mu.Lock()
 		a.currentSong = &model.Song{
 			ID:     item.Path,
@@ -3206,7 +3207,7 @@ func (a *NativeApp) playLocalFile(item LocalMusicItem) {
 			Ext:    item.Ext,
 			Size:   item.Size,
 		}
-		a.audioError = fmt.Sprintf("暂不支持播放 .%s 格式（原生播放器当前仅内置纯 Go MP3 解码）", item.Ext)
+		a.audioError = fmt.Sprintf("暂不支持播放 .%s 格式（原生播放器当前内置纯 Go MP3 与 WAV 解码）", item.Ext)
 		a.loadingAudio = false
 		a.playerPlaying = false
 		a.mu.Unlock()
